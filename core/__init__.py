@@ -1,0 +1,1 @@
+"""Paquete core: utilidades para OpenSSL y parseo de resultados."""
