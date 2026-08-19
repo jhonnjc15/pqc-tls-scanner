@@ -2,7 +2,6 @@ import socket
 import subprocess
 
 
-
 def s_client(host, port, groups="X25519MLKEM768"):
     return subprocess.run(
         ["openssl", "s_client", "-connect", f"{host}:{port}", "-groups", groups],
