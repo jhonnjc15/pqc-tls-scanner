@@ -1,16 +1,13 @@
 [project]
 name = "pqc-tls-scanner"
 version = "0.1.0"
-description = "Add your description here"
+description = "TLS scanner for PQC (ML-KEM) group detection"
 readme = "README.md"
 authors = [
     { name = "jhonnjc15", email = "jhonatanjcca@gmail.com" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = []
-
-[project.scripts]
-pqc-tls-scanner = "pqc_tls_scanner:main"
 
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13.0"]
