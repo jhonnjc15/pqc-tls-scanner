@@ -10,6 +10,20 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
+# uv
+uv.lock
+.python-version
+
 # Archivos generados
 *.log
 *.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

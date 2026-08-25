@@ -1,21 +1,33 @@
+# core/openssl.py
+import ssl
 import socket
-import subprocess
 
-
-def s_client(host, port, groups="X25519MLKEM768"):
-    return subprocess.run(
-        ["openssl", "s_client", "-connect", f"{host}:{port}", "-groups", groups],
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-
-
-def version():
-    return subprocess.run(
-        ["openssl", "version"], capture_output=True, text=True
-    ).stdout.strip()
-
-
-def peer_ip(host):
-    return socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)[0][4][0]
+def check_pq_tls(host, port=443, groups="X25519MLKEM768:X25519"):
+    """Conecta usando SSL nativo de Python y devuelve los datos del certificado"""
+    
+    # Crear contexto SSL
+    context = ssl.create_default_context()
+    
+    # Grupos TLS 1.3 parametrizables
+    context.set_groups(groups)
+    print(ssl.OPENSSL_VERSION)
+    # Conectar y hacer handshake TLS
+    with socket.create_connection((host, port), timeout=10) as sock:
+        with context.wrap_socket(sock, server_hostname=host) as ssock:
+            
+            # Obtener el certificado (¡ya parseado en un diccionario!)
+            cert = ssock.getpeercert(binary_form=False)
+            
+# Obtener información de la conexión
+            cipher = ssock.cipher()
+            version = ssock.version()
+            negotiated_group = ssock.group()
+            
+            return {
+                "certificate": cert,
+                "cipher": cipher,
+                "version": version,
+                "negotiated_group": negotiated_group,
+                "host": host,
+                "port": port,
+            }

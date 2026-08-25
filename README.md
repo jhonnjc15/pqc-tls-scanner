@@ -1,51 +1,28 @@
 # pqc-tls-scanner
 
-## Instalación de OpenSSL 4.0.1
+Escáner TLS para detectar soporte de grupos post-cuánticos (ML-KEM) en servidores.
 
-El proyecto utiliza OpenSSL 4.0.1. La instalación se realiza desde el código
-fuente para controlar explícitamente la versión de OpenSSL utilizada durante
-los experimentos.
+## Requisitos
 
-Archivo utilizado: `openssl-4.0.1.tar.gz`
+- **Python 3.15+** (necesario para `ssl.SSLContext.set_groups()` y `SSLSocket.group()`)
+- **uv** (gestor de Python y dependencias)
 
-1. **Descargar OpenSSL** desde la terminal:
-   ```bash
-   wget https://www.openssl.org/source/openssl-4.0.1.tar.gz
-   ```
-2. **Descomprimir**:
-   ```bash
-   tar -zxvf openssl-4.0.1.tar.gz
-   ```
-3. **Entrar al directorio**:
-   ```bash
-   cd openssl-4.0.1
-   ```
-4. **Configurar la compilación**:
-   ```bash
-   ./config
-   ```
-5. **Compilar** (puede tardar algunos minutos):
-   ```bash
-   make
-   ```
-6. **Instalar**:
-   ```bash
-   sudo make install
-   ```
-7. **Configurar las bibliotecas compartidas** (indicar al sistema dónde
-   encontrarlas y actualizar el caché del dynamic linker):
-   ```bash
-   sudo sh -c 'echo "/usr/local/lib64" > /etc/ld.so.conf.d/openssl.conf'
-   sudo ldconfig
-   ```
-8. **Verificar la instalación**:
-   ```bash
-   openssl version
-   # Resultado esperado: OpenSSL 4.0.1 9 Jun 2026 (Library: OpenSSL 4.0.1 9 Jun 2026)
+## Instalación rápida
 
-   which openssl
-   # Resultado esperado: /usr/local/bin/openssl
-   ```
+```bash
+# 1. Instalar uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
 
-La instalación coloca el ejecutable en `/usr/local/bin/openssl` y las
-bibliotecas compartidas en `/usr/local/lib64/`.
+# 2. Instalar Python 3.15 (requerido para APIs de grupos TLS 1.3)
+uv python install --pre 3.15
+
+# 3. Clonar y usar
+git clone git@github.com:jhonnjc15/pqc-tls-scanner.git
+cd pqc-tls-scanner
+uv run --python 3.15 v1/main.py cloudflare.com "X25519MLKEM768:X25519"
+```
+
+## Por qué Python 3.15
+
+Las APIs `set_groups()` / `get_groups()` / `SSLSocket.group()` para inspeccionar y configurar grupos de intercambio de claves TLS 1.3 (incluyendo híbridos PQC como `X25519MLKEM768`) **solo existen en Python 3.15+**. Python 3.14 no las tiene.
