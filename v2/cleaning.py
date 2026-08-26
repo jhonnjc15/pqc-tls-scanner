@@ -1,16 +1,19 @@
 import pandas as pd
 from pathlib import Path
 
-# CSV paths
-CRUX_CSV = Path.home() / "Downloads" / "bquxjob_7fa696b9_1a03eb5096d.csv"
-TRANCO_CSV = Path.home() / "Downloads" / "bq-results-20260826-023653-1787711892583.csv"
+# Read both CSVs
+url_crux ='https://drive.google.com/file/d/1kqZqGfmuFI_CX5K2gEWs33bAO2P0RDv6/view?usp=sharing'
+file_id = url_crux.split('/')[-2]
+dwn_url_crux='https://drive.google.com/uc?id=' + file_id
+df_crux = pd.read_csv(dwn_url_crux)
+
+url_tranco ='https://drive.google.com/file/d/1rPL3TuIqre332JZH2V2A-rW4I3d1VgrH/view?usp=sharing'
+file_id = url_tranco.split('/')[-2]
+dwn_url_tranco='https://drive.google.com/uc?id=' + file_id
+df_tranco = pd.read_csv(dwn_url_tranco)
 
 # Output path
 OUTPUT = Path(__file__).parent / "data" / "domains_br.txt"
-
-# Read both CSVs
-df_crux = pd.read_csv(CRUX_CSV)
-df_tranco = pd.read_csv(TRANCO_CSV)
 
 # CRUX has bare domains, Tranco has URLs
 # Clean Tranco: strip protocol, path, www
