@@ -27,3 +27,7 @@ uv.lock
 # OS
 .DS_Store
 Thumbs.db
+
+# Data and resukts
+v2/results/
+v2/data/

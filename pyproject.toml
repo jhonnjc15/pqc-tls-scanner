@@ -7,4 +7,6 @@ authors = [
     { name = "jhonnjc15", email = "jhonatanjcca@gmail.com" }
 ]
 requires-python = ">=3.15"
-dependencies = []
+dependencies = [
+    "pandas>=3.0.5",
+]
