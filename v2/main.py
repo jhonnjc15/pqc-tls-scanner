@@ -12,44 +12,14 @@ from core.openssl import check_pq_tls
 # Paths
 DOMAINS_FILE = Path(__file__).parent / "data" / "domains_br.txt"
 RESULTS_DIR = Path(__file__).parent / "results"
-GROUPS = "X25519MLKEM768:X25519"
-LIMIT = 10
-
-
-def subject_dict(cert):
-    """Extract subject fields as flat dict"""
-    d = {}
-    for item in cert.get("subject", ()):
-        for sub in item:
-            if isinstance(sub, tuple) and len(sub) == 2:
-                d[sub[0]] = sub[1]
-    return d
+LIMIT = 20
 
 
 def scan_domain(domain):
     """Scan a single domain and return a result row"""
-    try:
-        result = check_pq_tls(domain, groups=GROUPS)
-        cert = result["certificate"]
-        subj = subject_dict(cert)
-
-        negotiated = result.get("negotiated_group", "")
-        pqc = negotiated if negotiated and negotiated.startswith(("X25519MLKEM", "X448MLKEM", "SecP")) else "None"
-
-        return {
-            "host": domain,
-            "port": result["port"],
-            "tls_version": result.get("version", "None"),
-            "cipher": result["cipher"][0] if result.get("cipher") else "None",
-            "kex_group": negotiated,
-            "signature_algorithm": result.get("server_sigalg", "None"),
-            "country_name": subj.get("countryName", "None"),
-            "organization_name": subj.get("organizationName", "None"),
-            "pqc_deployment": pqc,
-            "pqc_support": pqc,
-            "error": "",
-        }
-    except Exception as e:
+    result = check_pq_tls(domain)
+    
+    if result.get("error"):
         return {
             "host": domain,
             "port": 443,
@@ -59,10 +29,31 @@ def scan_domain(domain):
             "signature_algorithm": "None",
             "country_name": "None",
             "organization_name": "None",
-            "pqc_deployment": "None",
-            "pqc_support": "None",
-            "error": str(e)[:200],
+            "error": result["error"],
+            "dns_retries": result.get("dns_retries", 0),
         }
+
+    cert = result["certificate"]
+    subj = {}
+    for item in cert.get("subject", ()):
+        for sub in item:
+            if isinstance(sub, tuple) and len(sub) == 2:
+                subj[sub[0]] = sub[1]
+
+    negotiated = result.get("negotiated_group", "")
+
+    return {
+        "host": domain,
+        "port": result["port"],
+        "tls_version": result.get("version", "None"),
+        "cipher": result["cipher"][0] if result.get("cipher") else "None",
+        "kex_group": negotiated,
+        "signature_algorithm": result.get("server_sigalg", "None"),
+        "country_name": subj.get("countryName", "None"),
+        "organization_name": subj.get("organizationName", "None"),
+        "error": "",
+        "dns_retries": result.get("dns_retries", 0),
+    }
 
 
 def main():
@@ -83,7 +74,7 @@ def main():
     fields = [
         "host", "port", "tls_version", "cipher", "kex_group",
         "signature_algorithm", "country_name", "organization_name",
-        "pqc_deployment", "pqc_support", "error",
+        "error", "dns_retries",
     ]
 
     with open(output_file, "w", newline="") as f:
