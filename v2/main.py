@@ -1,5 +1,6 @@
 import csv
 import sys
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -12,47 +13,67 @@ from core.openssl import check_pq_tls
 # Paths
 DOMAINS_FILE = Path(__file__).parent / "data" / "domains_br.txt"
 RESULTS_DIR = Path(__file__).parent / "results"
-LIMIT = 20
+LIMIT = 100
+
+STRIP_PATTERN = re.compile(r'^\d+[.-]*')
 
 
 def scan_domain(domain):
-    """Scan a single domain and return a result row"""
-    result = check_pq_tls(domain)
+    """Scan a domain with fallback chain: original -> www -> stripped -> www_stripped"""
+    # Build probe list inline
+    probes = [domain]
+    if not domain.startswith("www."):
+        probes.append(f"www.{domain}")
+    stripped = STRIP_PATTERN.sub('', domain)
+    if stripped != domain:
+        probes.append(stripped)
+        if not stripped.startswith("www."):
+            probes.append(f"www.{stripped}")
     
-    if result.get("error"):
-        return {
-            "host": domain,
-            "port": 443,
-            "tls_version": "None",
-            "cipher": "None",
-            "kex_group": "None",
-            "signature_algorithm": "None",
-            "country_name": "None",
-            "organization_name": "None",
-            "error": result["error"],
-            "dns_retries": result.get("dns_retries", 0),
-        }
-
-    cert = result["certificate"]
-    subj = {}
-    for item in cert.get("subject", ()):
-        for sub in item:
-            if isinstance(sub, tuple) and len(sub) == 2:
-                subj[sub[0]] = sub[1]
-
-    negotiated = result.get("negotiated_group", "")
-
+    last_result = None
+    
+    for probe_host in probes:
+        result = check_pq_tls(probe_host)
+        last_result = result
+        
+        if not result.get("error"):
+            # SUCCESS - build row with final_host
+            cert = result["certificate"]
+            subj = {}
+            for item in cert.get("subject", ()):
+                for sub in item:
+                    if isinstance(sub, tuple) and len(sub) == 2:
+                        subj[sub[0]] = sub[1]
+            negotiated = result.get("negotiated_group", "")
+            
+            return {
+                "host": domain,
+                "final_host": probe_host,
+                "port": result["port"],
+                "tls_version": result.get("version", "None"),
+                "cipher": result["cipher"][0] if result.get("cipher") else "None",
+                "kex_group": negotiated,
+                "signature_algorithm": result.get("server_sigalg", "None"),
+                "country_name": subj.get("countryName", "None"),
+                "organization_name": subj.get("organizationName", "None"),
+                "error": "",
+                "dns_retries": result.get("dns_retries", 0),
+            }
+    
+    # ALL PROBES FAILED
+    error_msg = last_result.get("error", "Unknown error") if last_result else "Unknown error"
     return {
         "host": domain,
-        "port": result["port"],
-        "tls_version": result.get("version", "None"),
-        "cipher": result["cipher"][0] if result.get("cipher") else "None",
-        "kex_group": negotiated,
-        "signature_algorithm": result.get("server_sigalg", "None"),
-        "country_name": subj.get("countryName", "None"),
-        "organization_name": subj.get("organizationName", "None"),
-        "error": "",
-        "dns_retries": result.get("dns_retries", 0),
+        "final_host": "",
+        "port": 443,
+        "tls_version": "None",
+        "cipher": "None",
+        "kex_group": "None",
+        "signature_algorithm": "None",
+        "country_name": "None",
+        "organization_name": "None",
+        "error": error_msg,
+        "dns_retries": last_result.get("dns_retries", 0) if last_result else 0,
     }
 
 
@@ -75,6 +96,7 @@ def main():
         "host", "port", "tls_version", "cipher", "kex_group",
         "signature_algorithm", "country_name", "organization_name",
         "error", "dns_retries",
+        "final_host",
     ]
 
     with open(output_file, "w", newline="") as f:
@@ -85,7 +107,9 @@ def main():
             row = scan_domain(domain)
             writer.writerow(row)
 
-            status = "OK" if not row["error"] else f"ERROR: {row['error'][:50]}"
+            status = "OK" if not row["error"] else f"ERROR: {row['error'][:80]}"
+            if row["final_host"] and row["final_host"] != domain:
+                status += f" (via {row['final_host']})"
             print(f"[{i}/{total}] {domain}: {status}")
 
     print(f"\nResults saved to: {output_file}")

@@ -13,7 +13,7 @@ DEFAULT_GROUPS = (
 DNS_TRANSIENT_ERRNOS = (-3, -2)  # EAI_AGAIN, EAI_NONAME
 
 
-def check_pq_tls(host, port=443, groups=None, max_retries=3, base_delay=1.0):
+def check_pq_tls(host, port=443, groups=None, max_retries=1, base_delay=1.0):
     """Connect using Python native SSL and return certificate data"""
     if groups is None:
         groups = DEFAULT_GROUPS
