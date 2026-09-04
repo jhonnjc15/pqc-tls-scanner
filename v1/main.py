@@ -1,6 +1,4 @@
-from pathlib import Path
-import sys
-import re
+import os
 
 # Add project root to path ../../
 project_root = Path(__file__).parent.parent
@@ -25,14 +23,30 @@ if stripped != host:
 
 result = None
 final_host = ""
+protocol = "failed"
 
 for probe_host in probes:
     result = check_pq_tls(probe_host, groups=groups)
     if not result.get("error"):
         final_host = probe_host
+        protocol = "https"
         break
 
 if result.get("error"):
+    # ALL TLS FAILED - Quick HTTP check (port 80)
+    try:
+        with socket.create_connection((host, 80), timeout=5) as sock:
+            sock.send(b"HEAD / HTTP/1.0\r\nHost: " + host.encode() + b"\r\n\r\n")
+            resp = sock.recv(1024).decode()
+            status = int(resp.split()[1]) if len(resp.split()) > 1 else 0
+            print(f"Host: {host}")
+            print(f"Protocol: http (port 80)")
+            print(f"HTTP Status: {status}")
+            sys.stdout.flush()
+            sys.exit(0)
+    except:
+        pass
+    
     print(f"Error: {result['error']}")
     print(f"  Tried: {probes}")
     if result.get("dns_retries", 0) > 0:
@@ -40,6 +54,7 @@ if result.get("error"):
     sys.exit(1)
 
 print(f"Host: {host}")
+print(f"Protocol: {protocol} (port {result['port']})")
 if final_host and final_host != host:
     print(f"Final Host: {final_host}")
 print(f"  TLS Version: {result.get('version', 'None')}")

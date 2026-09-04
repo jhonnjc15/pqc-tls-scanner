@@ -1,6 +1,7 @@
 import csv
 import sys
 import re
+import socket
 from datetime import datetime
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from core.openssl import check_pq_tls
 # Paths
 DOMAINS_FILE = Path(__file__).parent / "data" / "domains_br.txt"
 RESULTS_DIR = Path(__file__).parent / "results"
-LIMIT = 100
+LIMIT = 2000
 
 STRIP_PATTERN = re.compile(r'^\d+[.-]*')
 
@@ -50,6 +51,7 @@ def scan_domain(domain):
                 "host": domain,
                 "final_host": probe_host,
                 "port": result["port"],
+                "protocol": "https",
                 "tls_version": result.get("version", "None"),
                 "cipher": result["cipher"][0] if result.get("cipher") else "None",
                 "kex_group": negotiated,
@@ -60,12 +62,36 @@ def scan_domain(domain):
                 "dns_retries": result.get("dns_retries", 0),
             }
     
+    # ALL TLS PROBES FAILED - Quick HTTP check (port 80)
+    try:
+        with socket.create_connection((domain, 80), timeout=5) as sock:
+            sock.send(b"HEAD / HTTP/1.0\r\nHost: " + domain.encode() + b"\r\n\r\n")
+            resp = sock.recv(1024).decode()
+            status = int(resp.split()[1]) if len(resp.split()) > 1 else 0
+            return {
+                "host": domain,
+                "final_host": domain,
+                "port": 80,
+                "protocol": "http",
+                "tls_version": "None",
+                "cipher": "None",
+                "kex_group": "None",
+                "signature_algorithm": "None",
+                "country_name": "None",
+                "organization_name": "None",
+                "error": "",
+                "dns_retries": 0,
+            }
+    except:
+        pass
+    
     # ALL PROBES FAILED
     error_msg = last_result.get("error", "Unknown error") if last_result else "Unknown error"
     return {
         "host": domain,
         "final_host": "",
         "port": 443,
+        "protocol": "failed",
         "tls_version": "None",
         "cipher": "None",
         "kex_group": "None",
@@ -96,7 +122,7 @@ def main():
         "host", "port", "tls_version", "cipher", "kex_group",
         "signature_algorithm", "country_name", "organization_name",
         "error", "dns_retries",
-        "final_host",
+        "final_host", "protocol",
     ]
 
     with open(output_file, "w", newline="") as f:
@@ -108,7 +134,9 @@ def main():
             writer.writerow(row)
 
             status = "OK" if not row["error"] else f"ERROR: {row['error'][:80]}"
-            if row["final_host"] and row["final_host"] != domain:
+            if row["protocol"] == "http":
+                status += " (HTTP only)"
+            elif row["final_host"] and row["final_host"] != domain:
                 status += f" (via {row['final_host']})"
             print(f"[{i}/{total}] {domain}: {status}")
 
