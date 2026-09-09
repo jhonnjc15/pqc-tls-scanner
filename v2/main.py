@@ -14,7 +14,7 @@ from core.openssl import check_pq_tls
 # Paths
 DOMAINS_FILE = Path(__file__).parent / "data" / "domains_br.txt"
 RESULTS_DIR = Path(__file__).parent / "results"
-LIMIT = 2000
+LIMIT = 10000
 
 STRIP_PATTERN = re.compile(r'^\d+[.-]*')
 

@@ -67,7 +67,7 @@ output_dir = os.path.join('v2', 'graphics')
 os.makedirs(output_dir, exist_ok=True)
 
 # Helper to add labels (number and percentage in one line)
-def add_labels(ax, data, col='Count'):
+def add_labels(ax, data, col='Count', fontsize=10):
     total = data[col].sum()
     if total == 0:
         return
@@ -76,7 +76,7 @@ def add_labels(ax, data, col='Count'):
         val = row[col]
         pct = (val / total) * 100
         ax.text(i, val + max_val*0.02, f'{val} ({pct:.1f}%)',
-                ha='center', va='bottom', fontsize=10, fontweight='bold')
+                ha='center', va='bottom', fontsize=fontsize, fontweight='bold')
     ax.set_ylim(0, max_val * 1.2 if max_val > 0 else 1)
 
 # Graph 1: Protocol
@@ -128,7 +128,7 @@ ax4.set_ylabel('Number of domains')
 ax4.set_xlabel('Cipher Suite')
 # Rotar etiquetas para que no se solapen
 ax4.set_xticklabels(ax4.get_xticklabels(), rotation=45, ha='right')
-add_labels(ax4, cipher_counts)
+add_labels(ax4, cipher_counts, fontsize=6)
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, 'cipher_suites.png'), dpi=150)
 plt.close()
